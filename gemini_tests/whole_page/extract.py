@@ -80,10 +80,10 @@ result = model.generate_content(
     [
         img,
         "\n\n",
-        "List the daily observations for months January to June. "
+        "List the daily observations  for months January to June. "
         + "Be careful of missing data. Several days have missing data and "
-        + "These days will have an entry that is blank or has a dash '-' "
-        + "Return the charater '-' for missing data.",
+        + "These days will have an entry that is blank or has a dash '-'. "
+        + "Return the character '-' for missing data.",
     ],
     generation_config=genai.GenerationConfig(
         response_mime_type="application/json", response_schema=Annual
@@ -100,8 +100,8 @@ result = model.generate_content(
         "\n\n",
         "List the daily observations for months July to December. "
         + "Be careful of missing data. Several days have missing data and "
-        + "These days will have an entry that is blank or has a dash '-' "
-        + "Return the charater '-' for missing data.",
+        + "These days will have an entry that is blank or has a dash '-'. "
+        + "Return the character '-' for missing data.",
     ],
     generation_config=genai.GenerationConfig(
         response_mime_type="application/json", response_schema=Annual

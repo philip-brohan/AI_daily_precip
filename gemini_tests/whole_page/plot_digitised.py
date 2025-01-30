@@ -108,7 +108,20 @@ ax_digitised = fig.add_axes([0.51, 0.13, 0.47, 0.63])
 ax_digitised.set_xlim(0.5, 12.5)
 ax_digitised.set_xticks(range(1, 13))
 ax_digitised.set_xticklabels(
-    ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    (
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    )
 )
 ax_digitised.xaxis.set_ticks_position("top")
 ax_digitised.xaxis.set_label_position("top")
@@ -118,21 +131,31 @@ ax_digitised.set_yticklabels(range(1, 32))
 ax_digitised.invert_yaxis()
 ax_digitised.set_aspect("auto")
 
-monthNames = (
-    "Jan",
-    "Feb",
-    "Mar",
-    "April",
-    "May",
-    "June",
-    "July",
-    "Aug",
-    "Sept",
-    "Oct",
-    "Nov",
-    "Dec",
-)
-monthNumbers = {month: i + 1 for i, month in enumerate(monthNames)}
+monthNumbers = {
+    "Jan": 1,
+    "January": 1,
+    "Feb": 2,
+    "February": 2,
+    "Mar": 3,
+    "March": 3,
+    "Apr": 4,
+    "April": 4,
+    "May": 5,
+    "Jun": 6,
+    "June": 6,
+    "Jul": 7,
+    "July": 7,
+    "Aug": 8,
+    "August": 8,
+    "Sep": 9,
+    "September": 9,
+    "Oct": 10,
+    "October": 10,
+    "Nov": 11,
+    "November": 11,
+    "Dec": 12,
+    "December": 12,
+}
 for month in dd1["Month"] + dd2["Month"]:
     for day in month["rainfall"]:
         ax_digitised.text(
