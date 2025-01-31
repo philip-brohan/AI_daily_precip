@@ -42,12 +42,12 @@ fig = Figure(
 canvas = FigureCanvas(fig)
 
 # Image in the left
-ax_original = fig.add_axes([0.02, 0.02, 0.47, 0.96])
+ax_original = fig.add_axes([0.01, 0.02, 0.47, 0.96])
 ax_original.set_axis_off()
 imgplot = ax_original.imshow(img, zorder=10)
 
 # Metadata top right
-ax_metadata = fig.add_axes([0.51, 0.8, 0.47, 0.15])
+ax_metadata = fig.add_axes([0.52, 0.8, 0.47, 0.15])
 ax_metadata.set_xlim(0, 1)
 ax_metadata.set_ylim(0, 1)
 ax_metadata.set_xticks([])
@@ -104,7 +104,7 @@ ax_metadata.text(
 )
 
 # Digitised numbers on the right
-ax_digitised = fig.add_axes([0.51, 0.13, 0.47, 0.63])
+ax_digitised = fig.add_axes([0.52, 0.13, 0.47, 0.63])
 ax_digitised.set_xlim(0.5, 12.5)
 ax_digitised.set_xticks(range(1, 13))
 ax_digitised.set_xticklabels(
@@ -170,7 +170,7 @@ for month in dd1["Month"] + dd2["Month"]:
 
 
 # Totals along the bottom
-ax_totals = fig.add_axes([0.51, 0.09, 0.47, 0.03])
+ax_totals = fig.add_axes([0.52, 0.09, 0.47, 0.03])
 ax_totals.set_xlim(0.5, 12.5)
 ax_totals.set_ylim(0, 1)
 ax_totals.set_xticks([])
