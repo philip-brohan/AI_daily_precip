@@ -1,7 +1,20 @@
 AI Data Rescue: Daily Precipitation
 ===================================
 
-Can we use Artificial Intelligence (AI) to rapidly transcribe vital climate data from paper archives? (SPOILER: Yes).
+Summary
+-------
+Can we use Artificial Intelligence (AI) to rapidly transcribe vital climate data from paper archives? 
+
+Yes we can. The `Gemini 2.0 Flash Experimental <https://deepmind.google/technologies/gemini/flash/>`_ multimodal large language model (latest model from Google at the time of writing) can extract monthly precipitation data from the `UK Ten Year Rainfall Reports <https://digital.nmla.metoffice.gov.uk/index.php?name=SO_d383374a-91c3-4a7b-ba96-41b81cfb9d67>`_ with near-perfect accuracy.
+
+.. figure:: ../gemini_tests/10-year-monthlies/result.webp
+   :alt: Image showing extracted data
+   :align: center
+   
+   A sample page from the UK Ten Year Rainfall Reports, with the extracted data shown on the right. (:doc:`Details <../gemini_tests/10-year-monthlies/index>`)
+
+Details
+-------
 
 Datasets of historical weather observations are vital to our understanding of climate change and variability, and improving those datasets means transcribing millions of observations - converting paper records into a digital form. Doing such transcription manually is `expensive and slow <http://brohan.org/transcription_methods_review/>`_, and we have a backlog of millions of pages of potentially valuable records which have never been transcribed. We would dearly like a cheap, fast, software tool for extracting weather observations from (photographs of) archived paper documents. Can modern multimodal large language models be that tool?
 
@@ -25,9 +38,14 @@ I will extract information from this page using the `Gemini API <https://ai.goog
    Finding data locations on the page <gemini_tests/page_locations/index>
    Extracting all data from a page <gemini_tests/whole_page/index>
 
+Gemini is extremely capable for this use case, and impressively easy to use. It'll take a little bit more work to get good results for the daily rainfall cases with their variable missing data pattern. but it looks as if it's ready to go as-is for simpler cases with no missing data. Ive tested this on a different example - the 10-year monthly totals for a station.
 
+.. toctree::
+   :maxdepth: 1
 
+   10-year monthlies <gemini_tests/10-year-monthlies/index>
 
+In this simpler case it works pretty-much perfectly.
 
 .. toctree::
    :maxdepth: 1
