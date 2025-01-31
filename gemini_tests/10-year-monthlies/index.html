@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Full page extraction - 10-year monthlies &#8212; AI data rescue: Daily precipitation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinxdoc.css?v=34905f61" />
+    <script src="../../_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Diagnostic plot for 10-year monthlies test" href="plot_digitised.html" />
+    <link rel="prev" title="Diagnostic plot for whole page test" href="../whole_page/plot_digitised.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="plot_digitised.html" title="Diagnostic plot for 10-year monthlies test"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="../whole_page/plot_digitised.html" title="Diagnostic plot for whole page test"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Full page extraction - 10-year monthlies</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="full-page-extraction-10-year-monthlies">
+<h1>Full page extraction - 10-year monthlies<a class="headerlink" href="#full-page-extraction-10-year-monthlies" title="Link to this heading">¶</a></h1>
+<p>The <a class="reference internal" href="#"><span class="doc">test on the daily-rainfall page</span></a> suggested that Gemini worked almost perfectly, but struggled with the missing entries in a table. To check this, I’m going to try a test with a page that has no missing data - the 10-year monthly totals for a station. (<a class="reference internal" href="test_image.html"><span class="doc">Image</span></a>)</p>
+<p>The code is almost the same - I’ve just changed the metadata names to match the image, and tweaked the data structure for monthly totals rather than daily.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+
+<span class="c1"># Get all required data from the page</span>
+<span class="c1"># This version does a sample from the 10-year monthlies</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">PIL.Image</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">google.generativeai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">genai</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">typing</span>
+
+<span class="c1"># You will need an API key get it from https://ai.google.dev/gemini-api/docs/api-key</span>
+
+<span class="c1"># I keep my API key in the .gemini_api file in my home directory.</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/.gemini_api&quot;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;HOME&quot;</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+<span class="c1"># Default protocol is &#39;GRPC&#39; - but that is blocked by the Office firewall.</span>
+<span class="c1">#  Use &#39;REST&#39; instead.</span>
+<span class="n">genai</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">,</span> <span class="n">transport</span><span class="o">=</span><span class="s2">&quot;rest&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Specify a structure for the station metadata</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MetaData</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">Year</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">StationNumber</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">Location</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">County</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">River_basin</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">Type_of_gauge</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">Observer</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="c1"># Specify a structure for the daily observations</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Monthly</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">Month</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">rainfall</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Annual</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">Year</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">rainfall</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Monthly</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Decadal</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">rainfall</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Annual</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Totals</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">Totals</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+
+<span class="c1"># Load the sample image</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;../../images/monthlies/TYRain_1941-1950_25_pt1-10.jpg&quot;</span><span class="p">)</span>
+
+<span class="c1"># Pick an AI to use - this one is the latest as of 2025-01-29</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">GenerativeModel</span><span class="p">(</span><span class="s2">&quot;gemini-2.0-flash-exp&quot;</span><span class="p">)</span>
+
+<span class="c1"># Get metadata from the image</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="n">img</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;List the station metadata&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="n">generation_config</span><span class="o">=</span><span class="n">genai</span><span class="o">.</span><span class="n">GenerationConfig</span><span class="p">(</span>
+        <span class="n">response_mime_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="n">response_schema</span><span class="o">=</span><span class="n">MetaData</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+<span class="c1"># Structured data as JSON</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;metadata.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;metadata.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+
+<span class="c1"># Get the Monthly observations from the image</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;List the monthly observations. &quot;</span><span class="p">],</span>
+    <span class="n">generation_config</span><span class="o">=</span><span class="n">genai</span><span class="o">.</span><span class="n">GenerationConfig</span><span class="p">(</span>
+        <span class="n">response_mime_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="n">response_schema</span><span class="o">=</span><span class="n">Decadal</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;monthly.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;monthly.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+
+
+<span class="c1"># Get the Annually totals</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;List the abnnualy totals for each year.&quot;</span><span class="p">],</span>
+    <span class="n">generation_config</span><span class="o">=</span><span class="n">genai</span><span class="o">.</span><span class="n">GenerationConfig</span><span class="p">(</span>
+        <span class="n">response_mime_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="n">response_schema</span><span class="o">=</span><span class="n">Totals</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;totals.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;totals.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Producing three JSON output files:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="s2">&quot;County&quot;</span><span class="p">:</span> <span class="s2">&quot;Mon mouth&quot;</span><span class="p">,</span>
+<span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="s2">&quot;Tredegar Laboratory&quot;</span><span class="p">,</span>
+<span class="s2">&quot;Observer&quot;</span><span class="p">:</span> <span class="s2">&quot;Tvedegar Iran &amp; Goal Co. Ltd. National Coal Board.&quot;</span><span class="p">,</span>
+<span class="s2">&quot;River_basin&quot;</span><span class="p">:</span> <span class="s2">&quot;Ebbw-2&quot;</span><span class="p">,</span>
+<span class="s2">&quot;StationNumber&quot;</span><span class="p">:</span> <span class="mi">4007</span><span class="p">,</span>
+<span class="s2">&quot;Type_of_gauge&quot;</span><span class="p">:</span> <span class="s2">&quot;Howard&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+    <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1941</span><span class="p">,</span>
+      <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.72&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.12&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.16&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.19&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.72&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.06&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.89&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.00&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;.82&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.93&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.18&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.16&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1942</span><span class="p">,</span>
+      <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.42&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;.55&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.33&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.59&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;8.98&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;.31&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.42&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.54&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.95&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.52&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;.78&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;9.00&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+        <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1943</span><span class="p">,</span>
+      <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;11.82&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.44&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.22&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.68&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.92&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.44&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.43&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.30&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.30&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.21&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.21&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.30&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+        <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1944</span><span class="p">,</span>
+      <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.68&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.19&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;.38&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.96&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.11&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.41&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.56&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.40&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.55&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;8.79&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;9.75&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.31&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+        <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1945</span><span class="p">,</span>
+       <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.71&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.64&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.63&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.81&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.76&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.86&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.95&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.83&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.58&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.54&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;.80&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;10.19&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+        <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1946</span><span class="p">,</span>
+       <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;8.55&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.00&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.48&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.96&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.14&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.68&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.66&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;9.30&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;9.23&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.63&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;14.24&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.17&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+        <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1947</span><span class="p">,</span>
+       <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.91&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.16&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;12.37&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.67&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.54&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.30&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.77&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;.55&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.87&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.71&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.37&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.64&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+        <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1948</span><span class="p">,</span>
+      <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;14.19&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.56&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.58&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.75&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.79&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.05&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.83&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;662&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.27&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.08&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.10&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;11.89&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+       <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1949</span><span class="p">,</span>
+      <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.02&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.33&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.63&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;5.45&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.45&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.09&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.05&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.57&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.95&quot;</span><span class="p">},</span>
+         <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;12.28&quot;</span><span class="p">},</span>
+          <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.71&quot;</span><span class="p">},</span>
+          <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;6.44&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+        <span class="p">{</span>
+      <span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1950</span><span class="p">,</span>
+      <span class="s2">&quot;rainfall&quot;</span><span class="p">:[</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;January&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;1.81&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;February&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;10.92&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;March&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.19&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;April&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;4.67&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;May&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.91&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;June&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;2.34&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;July&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.58&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;August&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;8.69&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;September&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.02&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;October&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.18&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;November&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;7.62&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;Month&quot;</span><span class="p">:</span><span class="s2">&quot;December&quot;</span><span class="p">,</span> <span class="s2">&quot;rainfall&quot;</span><span class="p">:</span><span class="s2">&quot;3.63&quot;</span><span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="s2">&quot;Totals&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="s2">&quot;47.95&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;51.39&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;56.57&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;54.09&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;58.30&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;74.04&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;54.86&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;70.71&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;52.97&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;64.56&quot;</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>And this works pretty-much perfectly.</p>
+<img alt="Image showing extracted data" class="align-center" src="../../_images/result2.webp" />
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="plot_digitised.html">Program to plot the extracted data from the Ten Year Rainfall image</a></li>
+</ul>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/AI_DR.webp" alt="Logo of AI data rescue: Daily precipitation"/>
+            </a></p>
+<h3><a href="../../index.html">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../basic_api/index.html">Basic API function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../single_measurement/index.html">Extracting a single data point</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../structured_output/index.html">Specifying an output structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../page_locations/index.html">Finding data locations on the page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../whole_page/index.html">Extracting all data from a page</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">10-year monthlies</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../credits.html">Authors and acknowledgements</a></li>
+</ul>
+<h3><a href="https://github.com/philip-brohan/AI_daily_precip">Get the code</a></h3>
+
+<ul>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip"
+           rel="nofollow">Github repository</a></li>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip/archive/master.zip"
+           rel="nofollow">Zip file</a></li>
+</ul>
+
+<h3>Found a bug, or have a suggestion?</h3>
+
+Please <a href="https://github.com/philip-brohan/AI_daily_precip/issues/new">raise an issue</a><br>or <a href="mailto://philip.brohan@metoffice.gov.uk">contact Philip</a>.
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="plot_digitised.html" title="Diagnostic plot for 10-year monthlies test"
+             >next</a></li>
+        <li class="right" >
+          <a href="../whole_page/plot_digitised.html" title="Diagnostic plot for whole page test"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Full page extraction - 10-year monthlies</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    </div>
+  </body>
+</html>

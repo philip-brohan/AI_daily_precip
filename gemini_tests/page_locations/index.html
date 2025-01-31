@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Page locations &#8212; AI data rescue: Daily precipitation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinxdoc.css?v=34905f61" />
+    <script src="../../_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Diagnostic plot for bounding boxes test" href="plot_digitised.html" />
+    <link rel="prev" title="Structured output" href="../structured_output/index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="plot_digitised.html" title="Diagnostic plot for bounding boxes test"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="../structured_output/index.html" title="Structured output"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Page locations</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="page-locations">
+<h1>Page locations<a class="headerlink" href="#page-locations" title="Link to this heading">¶</a></h1>
+<p>The Gemini documentation describes <a class="reference external" href="https://ai.google.dev/gemini-api/docs/vision?lang=python#bbox">a way to get page bounding boxes for items on the page</a>. This is not a vital feature, but it is useful for debugging and for understanding how Gemini is interpreting the page.</p>
+<p>So we modify <a class="reference internal" href="../structured_output/index.html"><span class="doc">the existing code</span></a> to request a bounding box for each item.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+
+<span class="c1"># Basic test of the Gemini API - get the station metadata as</span>
+<span class="c1">#  structured output.</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">PIL.Image</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">google.generativeai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">genai</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">typing</span>
+
+<span class="c1"># You will need an API key get it from https://ai.google.dev/gemini-api/docs/api-key</span>
+
+<span class="c1"># I keep my API key in the .gemini_api file in my home directory.</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/.gemini_api&quot;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;HOME&quot;</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+<span class="c1"># Default protocol is &#39;GRPC&#39; - but that is blocked by the Office firewall.</span>
+<span class="c1">#  Use &#39;REST&#39; instead.</span>
+<span class="n">genai</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">,</span> <span class="n">transport</span><span class="o">=</span><span class="s2">&quot;rest&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Specify a structure for the desired output</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MetaData</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">Year</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">Year_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">StationNumber</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">StationNumber_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">Location</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">Location_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">County</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">County_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">Sea_level_height</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">Sea_level_height_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">Gauge_diameter</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">Gauge_diameter_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">Gauge_height_feet</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">Gauge_height_feet_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">Gauge_height_inches</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">Gauge_height_inches_bounding_box</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="c1"># Load the sample image</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span>
+    <span class="s2">&quot;../../images/jpgs_300dpi/Devon_1941-1950_RainNos_1651-1689-293.jpg&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Pick an AI to use - this one is the latest as of 2025-01-29</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">GenerativeModel</span><span class="p">(</span><span class="s2">&quot;gemini-2.0-flash-exp&quot;</span><span class="p">)</span>
+
+<span class="c1"># Ask a question about the image</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="n">img</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;List the station metadata. Also give the bounding box of each item in [xmin,ymin,xmax,ymax] format.&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="n">generation_config</span><span class="o">=</span><span class="n">genai</span><span class="o">.</span><span class="n">GenerationConfig</span><span class="p">(</span>
+        <span class="n">response_mime_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="n">response_schema</span><span class="o">=</span><span class="n">MetaData</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+<span class="c1"># Structured data as JSON</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;locations.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;rest.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>And bounding boxes are indeed added to the JSON output</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="s2">&quot;County&quot;</span><span class="p">:</span> <span class="s2">&quot;DEVON&quot;</span><span class="p">,</span>
+<span class="s2">&quot;County_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">108</span><span class="p">,</span>
+<span class="mi">211</span><span class="p">,</span>
+<span class="mi">122</span><span class="p">,</span>
+<span class="mi">254</span>
+<span class="p">],</span>
+<span class="s2">&quot;Gauge_diameter&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="s2">&quot;Gauge_diameter_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">122</span><span class="p">,</span>
+<span class="mi">218</span><span class="p">,</span>
+<span class="mi">136</span><span class="p">,</span>
+<span class="mi">255</span>
+<span class="p">],</span>
+<span class="s2">&quot;Gauge_height_feet&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+<span class="s2">&quot;Gauge_height_feet_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">135</span><span class="p">,</span>
+<span class="mi">267</span><span class="p">,</span>
+<span class="mi">149</span><span class="p">,</span>
+<span class="mi">292</span>
+<span class="p">],</span>
+ <span class="s2">&quot;Gauge_height_inches&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+<span class="s2">&quot;Gauge_height_inches_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">135</span><span class="p">,</span>
+<span class="mi">301</span><span class="p">,</span>
+<span class="mi">148</span><span class="p">,</span>
+<span class="mi">321</span>
+<span class="p">],</span>
+<span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="s2">&quot;BADWORTHY COTTAGE, S. BRENT&quot;</span><span class="p">,</span>
+<span class="s2">&quot;Location_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">80</span><span class="p">,</span>
+<span class="mi">86</span><span class="p">,</span>
+<span class="mi">109</span><span class="p">,</span>
+<span class="mi">398</span>
+<span class="p">],</span>
+<span class="s2">&quot;Sea_level_height&quot;</span><span class="p">:</span> <span class="mi">550</span><span class="p">,</span>
+<span class="s2">&quot;Sea_level_height_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">147</span><span class="p">,</span>
+<span class="mi">288</span><span class="p">,</span>
+<span class="mi">162</span><span class="p">,</span>
+<span class="mi">381</span>
+<span class="p">],</span>
+ <span class="s2">&quot;StationNumber&quot;</span><span class="p">:</span> <span class="mi">1678</span><span class="p">,</span>
+<span class="s2">&quot;StationNumber_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">45</span><span class="p">,</span>
+<span class="mi">759</span><span class="p">,</span>
+<span class="mi">66</span><span class="p">,</span>
+<span class="mi">828</span>
+<span class="p">],</span>
+<span class="s2">&quot;Year&quot;</span><span class="p">:</span> <span class="mi">1947</span><span class="p">,</span>
+<span class="s2">&quot;Year_bounding_box&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="mi">64</span><span class="p">,</span>
+<span class="mi">514</span><span class="p">,</span>
+<span class="mi">88</span><span class="p">,</span>
+<span class="mi">603</span>
+<span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Unfortunately it doesn’t work - the locations are not correct. It sort-of-works, and it’s not clear exactly what is going wrong, but at the moment this feature is not useable.</p>
+<img alt="Image showing bounding boxes for extracted data" class="align-center" src="../../_images/result.webp" />
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="plot_digitised.html">Program to plot the bounding box diagnostic</a></li>
+</ul>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/AI_DR.webp" alt="Logo of AI data rescue: Daily precipitation"/>
+            </a></p>
+<h3><a href="../../index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../basic_api/index.html">Basic API function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../single_measurement/index.html">Extracting a single data point</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../structured_output/index.html">Specifying an output structure</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Finding data locations on the page</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../credits.html">Authors and acknowledgements</a></li>
+</ul>
+<h3><a href="https://github.com/philip-brohan/AI_daily_precip">Get the code</a></h3>
+
+<ul>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip"
+           rel="nofollow">Github repository</a></li>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip/archive/master.zip"
+           rel="nofollow">Zip file</a></li>
+</ul>
+
+<h3>Found a bug, or have a suggestion?</h3>
+
+Please <a href="https://github.com/philip-brohan/AI_daily_precip/issues/new">raise an issue</a><br>or <a href="mailto://philip.brohan@metoffice.gov.uk">contact Philip</a>.
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="plot_digitised.html" title="Diagnostic plot for bounding boxes test"
+             >next</a></li>
+        <li class="right" >
+          <a href="../structured_output/index.html" title="Structured output"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Page locations</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    </div>
+  </body>
+</html>

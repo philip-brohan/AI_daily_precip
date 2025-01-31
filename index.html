@@ -12,13 +12,13 @@
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="How to reproduce and extend this work" href="how_to.html" /> 
+    <link rel="next" title="Basic use of the Gemini API" href="gemini_tests/basic_api/index.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="how_to.html" title="How to reproduce and extend this work"
+          <a href="gemini_tests/basic_api/index.html" title="Basic use of the Gemini API"
              accesskey="N">next</a></li>
         <li class="nav-item nav-item-0"><a href="#">AI DR</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">AI Data Rescue: Daily Precipitation</a></li> 
@@ -32,8 +32,41 @@
             
   <section id="ai-data-rescue-daily-precipitation">
 <h1>AI Data Rescue: Daily Precipitation<a class="headerlink" href="#ai-data-rescue-daily-precipitation" title="Link to this heading">¶</a></h1>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">¶</a></h2>
 <p>Can we use Artificial Intelligence (AI) to rapidly transcribe vital climate data from paper archives?</p>
+<p>Yes we can. The <a class="reference external" href="https://deepmind.google/technologies/gemini/flash/">Gemini 2.0 Flash Experimental</a> multimodal large language model (latest model from Google at the time of writing) can extract monthly precipitation data from the <a class="reference external" href="https://digital.nmla.metoffice.gov.uk/index.php?name=SO_d383374a-91c3-4a7b-ba96-41b81cfb9d67">UK Ten Year Rainfall Reports</a> with near-perfect accuracy.</p>
+<figure class="align-center" id="id2">
+<img alt="Image showing extracted data" src="_images/result2.webp" />
+<figcaption>
+<p><span class="caption-text">A sample page from the UK Ten Year Rainfall Reports, with the extracted data shown on the right. (<a class="reference internal" href="gemini_tests/10-year-monthlies/index.html"><span class="doc">Details</span></a>)</span><a class="headerlink" href="#id2" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="details">
+<h2>Details<a class="headerlink" href="#details" title="Link to this heading">¶</a></h2>
 <p>Datasets of historical weather observations are vital to our understanding of climate change and variability, and improving those datasets means transcribing millions of observations - converting paper records into a digital form. Doing such transcription manually is <a class="reference external" href="http://brohan.org/transcription_methods_review/">expensive and slow</a>, and we have a backlog of millions of pages of potentially valuable records which have never been transcribed. We would dearly like a cheap, fast, software tool for extracting weather observations from (photographs of) archived paper documents. Can modern multimodal large language models be that tool?</p>
+<p>I’m going to test using the <a class="reference external" href="https://deepmind.google/technologies/gemini/flash/">Gemini 2.0 Flash Experimental</a> multimodal large language model (latest model from Google at the time of writing) to transcribe daily precipitation data from the <a class="reference external" href="https://https://digital.nmla.metoffice.gov.uk/index.php?name=SO_9903efdf-7f99-4cae-a723-8b3f426eea20">UK Daily Rainfall Reports</a> .</p>
+<p>Here is a sample Daily Rainfall page:</p>
+<a class="reference internal image-reference" href="_images/Devon_1941-1950_RainNos_1651-1689-293.jpg"><img alt="Example page from the UK Daily Rainfall reports" class="align-center" src="_images/Devon_1941-1950_RainNos_1651-1689-293.jpg" style="width: 400px;" />
+</a>
+<p>I will extract information from this page using the <a class="reference external" href="https://ai.google.dev/gemini-api/docs/">Gemini API</a>- going through the process in steps:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/basic_api/index.html">Basic API function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/single_measurement/index.html">Extracting a single data point</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/structured_output/index.html">Specifying an output structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/page_locations/index.html">Finding data locations on the page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/whole_page/index.html">Extracting all data from a page</a></li>
+</ul>
+</div>
+<p>Gemini is extremely capable for this use case, and impressively easy to use. It’ll take a little bit more work to get good results for the daily rainfall cases with their variable missing data pattern. but it looks as if it’s ready to go as-is for simpler cases with no missing data. Ive tested this on a different example - the 10-year monthly totals for a station.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/10-year-monthlies/index.html">10-year monthlies</a></li>
+</ul>
+</div>
+<p>In this simpler case it works pretty-much perfectly.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="how_to.html">How to reproduce or extend this work</a></li>
@@ -41,6 +74,7 @@
 </ul>
 </div>
 <p>This document is distributed under the terms of the <a class="reference external" href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/2/">Open Government Licence</a>. Source code included is distributed under the terms of the <a class="reference external" href="https://opensource.org/licenses/BSD-2-Clause">BSD licence</a>.</p>
+</section>
 </section>
 
 
@@ -54,6 +88,16 @@
               <img class="logo" src="_static/AI_DR.webp" alt="Logo of AI data rescue: Daily precipitation"/>
             </a></p>
 <h3><a href="#">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/basic_api/index.html">Basic API function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/single_measurement/index.html">Extracting a single data point</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/structured_output/index.html">Specifying an output structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/page_locations/index.html">Finding data locations on the page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/whole_page/index.html">Extracting all data from a page</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gemini_tests/10-year-monthlies/index.html">10-year monthlies</a></li>
+</ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="how_to.html">How to reproduce or extend this work</a></li>
 <li class="toctree-l1"><a class="reference internal" href="credits.html">Authors and acknowledgements</a></li>
@@ -78,7 +122,7 @@ Please <a href="https://github.com/philip-brohan/AI_daily_precip/issues/new">rai
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="how_to.html" title="How to reproduce and extend this work"
+          <a href="gemini_tests/basic_api/index.html" title="Basic use of the Gemini API"
              >next</a></li>
         <li class="nav-item nav-item-0"><a href="#">AI DR</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">AI Data Rescue: Daily Precipitation</a></li> 

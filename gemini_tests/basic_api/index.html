@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Basic use of the Gemini API &#8212; AI data rescue: Daily precipitation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinxdoc.css?v=34905f61" />
+    <script src="../../_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="How to reproduce and extend this work" href="../../how_to.html" />
+    <link rel="prev" title="AI Data Rescue: Daily Precipitation" href="../../index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../how_to.html" title="How to reproduce and extend this work"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="../../index.html" title="AI Data Rescue: Daily Precipitation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Basic use of the Gemini API</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="basic-use-of-the-gemini-api">
+<h1>Basic use of the Gemini API<a class="headerlink" href="#basic-use-of-the-gemini-api" title="Link to this heading">¶</a></h1>
+<p>To use the <a class="reference external" href="https://ai.google.dev/gemini-api/docs/">Gemini API</a> first set up <a class="reference internal" href="../../how_to.html"><span class="doc">the code environment</span></a>, then <a class="reference external" href="https://ai.google.dev/gemini-api/docs/quickstart">register for an API key</a> and save the key in a file called <code class="docutils literal notranslate"><span class="pre">.gemini_api</span></code> in your home directory:</p>
+<p>Then the API is simple to use: authenticate, load <a class="reference internal" href="../../test_image.html"><span class="doc">the image</span></a>, and make a query with the image and a question in natural language. Essentially we just ask ‘In this image, what is the rainfall for January 5th’.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+
+<span class="c1"># Basic test of the Gemini API</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">PIL.Image</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">google.generativeai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">genai</span>
+
+<span class="c1"># You will need an API key get it from https://ai.google.dev/gemini-api/docs/api-key</span>
+
+<span class="c1"># I keep my API key in the .gemini_api file in my home directory.</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/.gemini_api&quot;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;HOME&quot;</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+<span class="c1"># Default protocol is &#39;GRPC&#39; - but that is blocked by the Office firewall.</span>
+<span class="c1">#  Use &#39;REST&#39; instead.</span>
+<span class="n">genai</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">,</span> <span class="n">transport</span><span class="o">=</span><span class="s2">&quot;rest&quot;</span><span class="p">)</span>
+
+<span class="c1"># Load the sample image</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;../images/jpgs_300dpi/Devon_1941-1950_RainNos_1651-1689-293.jpg&quot;</span><span class="p">)</span>
+
+<span class="c1"># Pick an AI to use - this one is the latest as of 2025-01-29</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">GenerativeModel</span><span class="p">(</span><span class="s2">&quot;gemini-2.0-flash-exp&quot;</span><span class="p">)</span>
+
+<span class="c1"># Ask a question about the image</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">([</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;What is this document?&quot;</span><span class="p">])</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;sample_result.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+
+<span class="c1"># print(result)</span>
+</pre></div>
+</div>
+<p>The output is a data structure including the answer to the question.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">response</span><span class="p">:</span>
+<span class="n">GenerateContentResponse</span><span class="p">(</span>
+    <span class="n">done</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">iterator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">result</span><span class="o">=</span><span class="n">protos</span><span class="o">.</span><span class="n">GenerateContentResponse</span><span class="p">({</span>
+      <span class="s2">&quot;candidates&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+          <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;parts&quot;</span><span class="p">:</span> <span class="p">[</span>
+              <span class="p">{</span>
+                <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;This is a **British Rainfall Organization register of rainfall** for the year 1947, specifically for the station located at **Badworthy Cottage, S. Brent** in **Devon**. It records daily rainfall measurements in inches.&quot;</span>
+              <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;model&quot;</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;finish_reason&quot;</span><span class="p">:</span> <span class="s2">&quot;STOP&quot;</span><span class="p">,</span>
+          <span class="s2">&quot;safety_ratings&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+              <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;HARM_CATEGORY_HATE_SPEECH&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;probability&quot;</span><span class="p">:</span> <span class="s2">&quot;NEGLIGIBLE&quot;</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+              <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;HARM_CATEGORY_DANGEROUS_CONTENT&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;probability&quot;</span><span class="p">:</span> <span class="s2">&quot;NEGLIGIBLE&quot;</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+              <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;HARM_CATEGORY_HARASSMENT&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;probability&quot;</span><span class="p">:</span> <span class="s2">&quot;NEGLIGIBLE&quot;</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+              <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;HARM_CATEGORY_SEXUALLY_EXPLICIT&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;probability&quot;</span><span class="p">:</span> <span class="s2">&quot;NEGLIGIBLE&quot;</span>
+            <span class="p">}</span>
+          <span class="p">],</span>
+          <span class="s2">&quot;avg_logprobs&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.4376134669527094</span>
+        <span class="p">}</span>
+      <span class="p">],</span>
+      <span class="s2">&quot;usage_metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;prompt_token_count&quot;</span><span class="p">:</span> <span class="mi">265</span><span class="p">,</span>
+        <span class="s2">&quot;candidates_token_count&quot;</span><span class="p">:</span> <span class="mi">47</span><span class="p">,</span>
+        <span class="s2">&quot;total_token_count&quot;</span><span class="p">:</span> <span class="mi">312</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;model_version&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini-2.0-flash-exp&quot;</span>
+    <span class="p">}),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>We asked “What is this document?” and got the response “This is a <strong>British Rainfall Organization register of rainfall</strong> for the year 1947, specifically for the station located at <strong>Badworthy Cottage, S. Brent</strong> in <strong>Devon</strong>. It records daily rainfall measurements in inches.”</p>
+<p>This answer is correct in all respects (compare <a class="reference internal" href="../../test_image.html"><span class="doc">the image</span></a>), and shows the power of modern AIs. Gemini has read <em>and understood</em> the document, so we can transcribe data just by asking for what we want to know.
+This is vanilla Gemini - no specialist fine-tuneing, and it’s never seen this document before. This is basically magic - how far can we go with it?</p>
+<p>The output also tells us what the query cost: 312 tokens. At the time of writing, tokens are <a class="reference external" href="https://ai.google.dev/pricing">approximately $0.30 / 1 million tokens</a>, so this query cost about $0.0001 (one hundredth of one U.S. cent).</p>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/AI_DR.webp" alt="Logo of AI data rescue: Daily precipitation"/>
+            </a></p>
+<h3><a href="../../index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Basic API function</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../credits.html">Authors and acknowledgements</a></li>
+</ul>
+<h3><a href="https://github.com/philip-brohan/AI_daily_precip">Get the code</a></h3>
+
+<ul>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip"
+           rel="nofollow">Github repository</a></li>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip/archive/master.zip"
+           rel="nofollow">Zip file</a></li>
+</ul>
+
+<h3>Found a bug, or have a suggestion?</h3>
+
+Please <a href="https://github.com/philip-brohan/AI_daily_precip/issues/new">raise an issue</a><br>or <a href="mailto://philip.brohan@metoffice.gov.uk">contact Philip</a>.
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../how_to.html" title="How to reproduce and extend this work"
+             >next</a></li>
+        <li class="right" >
+          <a href="../../index.html" title="AI Data Rescue: Daily Precipitation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Basic use of the Gemini API</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    </div>
+  </body>
+</html>

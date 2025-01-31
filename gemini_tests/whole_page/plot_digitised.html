@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Diagnostic plot for whole page test &#8212; AI data rescue: Daily precipitation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinxdoc.css?v=34905f61" />
+    <script src="../../_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="How to reproduce and extend this work" href="../../how_to.html" />
+    <link rel="prev" title="Full page extraction" href="index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../how_to.html" title="How to reproduce and extend this work"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="index.html" title="Full page extraction"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Full page extraction</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Diagnostic plot for whole page test</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="diagnostic-plot-for-whole-page-test">
+<h1>Diagnostic plot for whole page test<a class="headerlink" href="#diagnostic-plot-for-whole-page-test" title="Link to this heading">¶</a></h1>
+<p>Plot the whole set of extracted data</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1"># Plot the data digitised by Gemini from a daily rainfall image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">PIL.Image</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.backends.backend_agg</span><span class="w"> </span><span class="kn">import</span> <span class="n">FigureCanvasAgg</span> <span class="k">as</span> <span class="n">FigureCanvas</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.figure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="kn">import</span> <span class="n">Rectangle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.lines</span><span class="w"> </span><span class="kn">import</span> <span class="n">Line2D</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--img&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Image number&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">403</span><span class="p">)</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+<span class="c1"># load the image</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span>
+    <span class="s2">&quot;../../images/jpgs_300dpi/Devon_1941-1950_RainNos_1651-1689-293.jpg&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># load the digitised data</span>
+<span class="n">metadata</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s2">&quot;metadata.json&quot;</span><span class="p">))</span>
+<span class="n">dd1</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s2">&quot;daily1.json&quot;</span><span class="p">))</span>
+<span class="n">dd2</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s2">&quot;daily2.json&quot;</span><span class="p">))</span>
+<span class="n">totals</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s2">&quot;totals.json&quot;</span><span class="p">))</span>
+
+<span class="c1"># Create the figure</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">Figure</span><span class="p">(</span>
+    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>  <span class="c1"># Width, Height (inches)</span>
+    <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">facecolor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">edgecolor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">frameon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">subplotpars</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">tight_layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">canvas</span> <span class="o">=</span> <span class="n">FigureCanvas</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+<span class="c1"># Image in the left</span>
+<span class="n">ax_original</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">([</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.47</span><span class="p">,</span> <span class="mf">0.96</span><span class="p">])</span>
+<span class="n">ax_original</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
+<span class="n">imgplot</span> <span class="o">=</span> <span class="n">ax_original</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c1"># Metadata top right</span>
+<span class="n">ax_metadata</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">([</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.47</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">])</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([])</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.05</span><span class="p">,</span>
+    <span class="mf">0.8</span><span class="p">,</span>
+    <span class="s2">&quot;Year: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">],</span>
+    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.05</span><span class="p">,</span>
+    <span class="mf">0.7</span><span class="p">,</span>
+    <span class="s2">&quot;Station Number: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;StationNumber&quot;</span><span class="p">],</span>
+    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.05</span><span class="p">,</span>
+    <span class="mf">0.6</span><span class="p">,</span>
+    <span class="s2">&quot;Location: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;Location&quot;</span><span class="p">],</span>
+    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.05</span><span class="p">,</span>
+    <span class="mf">0.5</span><span class="p">,</span>
+    <span class="s2">&quot;County: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;County&quot;</span><span class="p">],</span>
+    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.05</span><span class="p">,</span>
+    <span class="mf">0.4</span><span class="p">,</span>
+    <span class="s2">&quot;Height above sea-level: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;Sea_level_height&quot;</span><span class="p">],</span>
+    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.05</span><span class="p">,</span>
+    <span class="mf">0.3</span><span class="p">,</span>
+    <span class="s2">&quot;Gauge diameter: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;Gauge_diameter&quot;</span><span class="p">],</span>
+    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax_metadata</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.05</span><span class="p">,</span>
+    <span class="mf">0.2</span><span class="p">,</span>
+    <span class="s2">&quot;Gauge height: </span><span class="si">%d</span><span class="s2"> ft </span><span class="si">%d</span><span class="s2"> in&quot;</span>
+    <span class="o">%</span> <span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;Gauge_height_feet&quot;</span><span class="p">],</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;Gauge_height_inches&quot;</span><span class="p">]),</span>
+    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Digitised numbers on the right</span>
+<span class="n">ax_digitised</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">([</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.13</span><span class="p">,</span> <span class="mf">0.47</span><span class="p">,</span> <span class="mf">0.63</span><span class="p">])</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">12.5</span><span class="p">)</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">13</span><span class="p">))</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span>
+    <span class="p">(</span>
+        <span class="s2">&quot;Jan&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Feb&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Apr&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;May&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Jun&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Jul&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Aug&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sep&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Oct&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Nov&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Dec&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_ticks_position</span><span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">)</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_label_position</span><span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">)</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">32</span><span class="p">))</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">32</span><span class="p">))</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span>
+<span class="n">ax_digitised</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>
+
+<span class="n">monthNumbers</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Jan&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;January&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;Feb&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s2">&quot;February&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s2">&quot;Mar&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s2">&quot;March&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s2">&quot;Apr&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="s2">&quot;April&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="s2">&quot;May&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s2">&quot;Jun&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="s2">&quot;June&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="s2">&quot;Jul&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="s2">&quot;July&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="s2">&quot;Aug&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s2">&quot;August&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s2">&quot;Sep&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="s2">&quot;September&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="s2">&quot;Oct&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s2">&quot;October&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s2">&quot;Nov&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
+    <span class="s2">&quot;November&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
+    <span class="s2">&quot;Dec&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+    <span class="s2">&quot;December&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="k">for</span> <span class="n">month</span> <span class="ow">in</span> <span class="n">dd1</span><span class="p">[</span><span class="s2">&quot;Month&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">dd2</span><span class="p">[</span><span class="s2">&quot;Month&quot;</span><span class="p">]:</span>
+    <span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="n">month</span><span class="p">[</span><span class="s2">&quot;rainfall&quot;</span><span class="p">]:</span>
+        <span class="n">ax_digitised</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+            <span class="n">monthNumbers</span><span class="p">[</span><span class="n">month</span><span class="p">[</span><span class="s2">&quot;Month&quot;</span><span class="p">]],</span>
+            <span class="n">day</span><span class="p">[</span><span class="s2">&quot;Day&quot;</span><span class="p">],</span>
+            <span class="n">day</span><span class="p">[</span><span class="s2">&quot;rainfall&quot;</span><span class="p">],</span>
+            <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+            <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+            <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+<span class="c1"># Totals along the bottom</span>
+<span class="n">ax_totals</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">([</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.09</span><span class="p">,</span> <span class="mf">0.47</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">])</span>
+<span class="n">ax_totals</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">12.5</span><span class="p">)</span>
+<span class="n">ax_totals</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">ax_totals</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([])</span>
+<span class="n">ax_totals</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">total</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">totals</span><span class="p">[</span><span class="s2">&quot;Totals&quot;</span><span class="p">]):</span>
+    <span class="n">ax_totals</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+        <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">total</span><span class="p">,</span>
+        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+        <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="c1"># Render</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span>
+    <span class="s2">&quot;result.webp&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/AI_DR.webp" alt="Logo of AI data rescue: Daily precipitation"/>
+            </a></p>
+<h3><a href="../../index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../basic_api/index.html">Basic API function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../single_measurement/index.html">Extracting a single data point</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../structured_output/index.html">Specifying an output structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../page_locations/index.html">Finding data locations on the page</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Extracting all data from a page</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../credits.html">Authors and acknowledgements</a></li>
+</ul>
+<h3><a href="https://github.com/philip-brohan/AI_daily_precip">Get the code</a></h3>
+
+<ul>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip"
+           rel="nofollow">Github repository</a></li>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip/archive/master.zip"
+           rel="nofollow">Zip file</a></li>
+</ul>
+
+<h3>Found a bug, or have a suggestion?</h3>
+
+Please <a href="https://github.com/philip-brohan/AI_daily_precip/issues/new">raise an issue</a><br>or <a href="mailto://philip.brohan@metoffice.gov.uk">contact Philip</a>.
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../how_to.html" title="How to reproduce and extend this work"
+             >next</a></li>
+        <li class="right" >
+          <a href="index.html" title="Full page extraction"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AI DR</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Full page extraction</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Diagnostic plot for whole page test</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    </div>
+  </body>
+</html>
