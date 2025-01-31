@@ -20,6 +20,7 @@ And does it work? Well, almost. Metadata is correct, monthly totals are correct,
    :alt: Image showing bounding boxes for extracted data
    :align: center
 
+The full data extraction costs a bit less than 10,000 tokens. About 1/4 of a U.S. cent.
 
 .. toctree::
     :maxdepth: 1
