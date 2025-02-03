@@ -18,7 +18,7 @@ Details
 
 Datasets of historical weather observations are vital to our understanding of climate change and variability, and improving those datasets means transcribing millions of observations - converting paper records into a digital form. Doing such transcription manually is `expensive and slow <http://brohan.org/transcription_methods_review/>`_, and we have a backlog of millions of pages of potentially valuable records which have never been transcribed. We would dearly like a cheap, fast, software tool for extracting weather observations from (photographs of) archived paper documents. Can modern multimodal large language models be that tool?
 
-I'm going to test using the `Gemini 2.0 Flash Experimental <https://deepmind.google/technologies/gemini/flash/>`_ multimodal large language model (latest model from Google at the time of writing) to transcribe daily precipitation data from the `UK Daily Rainfall Reports <https://https://digital.nmla.metoffice.gov.uk/index.php?name=SO_9903efdf-7f99-4cae-a723-8b3f426eea20>`_ .
+I'm going to test using the `Gemini 2.0 Flash Experimental <https://deepmind.google/technologies/gemini/flash/>`_ multimodal large language model (latest model from Google at the time of writing) to transcribe daily precipitation data from the `UK Daily Rainfall Reports <https://digital.nmla.metoffice.gov.uk/index.php?name=SO_9903efdf-7f99-4cae-a723-8b3f426eea20>`_ .
 
 Here is a sample Daily Rainfall page:
 
