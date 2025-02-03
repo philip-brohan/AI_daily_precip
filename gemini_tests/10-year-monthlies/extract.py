@@ -87,7 +87,7 @@ with open("monthly.txt", "w") as file:
 
 # Get the Annually totals
 result = model.generate_content(
-    [img, "\n\n", "List the abnnualy totals for each year."],
+    [img, "\n\n", "List the annual totals."],
     generation_config=genai.GenerationConfig(
         response_mime_type="application/json", response_schema=Totals
     ),
