@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Pre-processing &#8212; AI data rescue: Daily precipitation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinxdoc.css?v=34905f61" />
+    <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="How to reproduce and extend this work" href="../how_to.html" />
+    <link rel="prev" title="Diagnostic plot for 10-year monthlies test" href="../gemini_tests/10-year-monthlies/plot_digitised.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../how_to.html" title="How to reproduce and extend this work"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="../gemini_tests/10-year-monthlies/plot_digitised.html" title="Diagnostic plot for 10-year monthlies test"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pre-processing</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="pre-processing">
+<h1>Pre-processing<a class="headerlink" href="#pre-processing" title="Link to this heading">¶</a></h1>
+<p>Missing data is a problem. We’d get much more accurate data extractions if originally, when filling out the forms, we’d put in zero values explicitly, and a nominal value (say <cite>99.9</cite>) for missing data. Then the forms would always have a complete grid of entries. Can we deal with this after the fact - by pre-processing the images to add numbers in the missing spaces?</p>
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">An example showing missing data infilling: Almost all the missing cells actually have 0.0mm precipitation. But I don’t want to infill with 0, because it might occur as a genuine entry somewhere. So I’m using ‘99.9’ as a missing data value. (Nowhere in the UK is going to see that much actual precipitation in a day - I hope.)</span><a class="headerlink" href="#id1" title="Link to this table">¶</a></caption>
+<colgroup>
+<col style="width: 50.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><a class="reference internal image-reference" href="../_images/original.jpg"><img alt="Original version of an image with missing data" src="../_images/original.jpg" style="width: 100%;" />
+</a>
+</td>
+<td><a class="reference internal image-reference" href="../_images/missing_infilled.jpg"><img alt="Same image after missing data has been infilled" src="../_images/missing_infilled.jpg" style="width: 100%;" />
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+<p>This works very well. Running exactly the same <a class="reference internal" href="../gemini_tests/whole_page/index.html"><span class="doc">whole-page data extraction</span></a> process as before, but on the infilled images, we get excellent results. (I’ve filtered the ‘99.9’s out of the results.)</p>
+<img alt="Data extraction results from the infilled images" class="align-center" src="../_images/result3.webp" />
+<p>This is great, but the obvious catch is that the pre-processing is not easy to do. Here I’ve used the <a class="reference external" href="https://opencv.org/">OpenCV</a> library to find the empty boxes and fill them in. The process is to find the horizontal and vertical lines that make up the table, then find empty cells between those lines, and fill those in. This is too fussy a process to work generally - it depends precisely on the image colour, contrast and format - so it’s not a general solution. But this probably could be used to produce a few hundred successful page digitisations, which could then be used to fine-tune the LLM (to cope better with missing data) - so we might be able to bootstrap our way to a more general solution.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1"># The LLM is confused by the empty grid-cells in the rainfall data table.</span>
+<span class="c1">#  This script finds the empty cells and adds a mark to them.</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">PIL.Image</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--img&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Image number&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--debug&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output intermediate images&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+    <span class="s2">&quot;--threshold_h&quot;</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Value boundary for black:white distinction (0-255) for horizontal line search&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+    <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="mi">180</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+    <span class="s2">&quot;--threshold_v&quot;</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Value boundary for black:white distinction (0-255) for vertical line search&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+    <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+
+<span class="c1"># Make greyscale image from the original</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_greyscale_image</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+    <span class="n">img_gray</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">img_gray</span>
+
+
+<span class="c1"># Make binary image from greyscale</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_binary_image</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="n">threshold_x</span><span class="p">):</span>
+    <span class="p">(</span><span class="n">thresh</span><span class="p">,</span> <span class="n">img_bin</span><span class="p">)</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">threshold</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="n">threshold_x</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">THRESH_BINARY</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">bitwise_not</span><span class="p">(</span><span class="n">img_bin</span><span class="p">)</span>
+
+
+<span class="c1"># Find horizontal lines</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_horizontal_lines</span><span class="p">(</span><span class="n">img_gray</span><span class="p">):</span>
+    <span class="n">img_bin_h</span> <span class="o">=</span> <span class="n">make_binary_image</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">threshold_h</span><span class="p">)</span>
+    <span class="c1"># Discard all lines in the top fifth of the image</span>
+    <span class="n">img_bin_h</span><span class="p">[:</span> <span class="n">img_bin_h</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">5</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># And in the bottom 20th</span>
+    <span class="n">img_bin_h</span><span class="p">[</span><span class="n">img_bin_h</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">img_bin_h</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">20</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;threshold_h.jpg&quot;</span><span class="p">,</span> <span class="n">img_bin_h</span><span class="p">)</span>
+    <span class="c1"># Blur horizontally to make dotted lines continuous</span>
+    <span class="n">img_hblur</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">img_bin_h</span><span class="p">,</span> <span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;hblur.jpg&quot;</span><span class="p">,</span> <span class="n">img_hblur</span><span class="p">)</span>
+    <span class="n">kernel_length_h</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img_bin_h</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">//</span> <span class="mi">100</span>
+    <span class="n">horizontal_kernel</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">getStructuringElement</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">MORPH_RECT</span><span class="p">,</span> <span class="p">(</span><span class="n">kernel_length_h</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">im_temp_h</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">img_hblur</span><span class="p">,</span> <span class="n">horizontal_kernel</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">horizontal_lines_img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">dilate</span><span class="p">(</span><span class="n">im_temp_h</span><span class="p">,</span> <span class="n">horizontal_kernel</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;h2.jpg&quot;</span><span class="p">,</span> <span class="n">horizontal_lines_img</span><span class="p">)</span>
+    <span class="c1"># Find lines in the edges using Hough Line Transform</span>
+    <span class="n">hlines</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">HoughLinesP</span><span class="p">(</span>
+        <span class="n">horizontal_lines_img</span><span class="p">,</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">180</span><span class="p">,</span>
+        <span class="n">threshold</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+        <span class="n">minLineLength</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+        <span class="n">maxLineGap</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># Create an image with only horizontal lines drawn</span>
+    <span class="n">horizontal_lines_img</span> <span class="o">=</span> <span class="n">make_binary_image</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># blank</span>
+    <span class="k">if</span> <span class="n">hlines</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hlines</span><span class="p">:</span>
+            <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">y1</span> <span class="o">-</span> <span class="n">y2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>  <span class="c1"># Filter out non-horizontal lines</span>
+                <span class="n">cv2</span><span class="o">.</span><span class="n">line</span><span class="p">(</span>
+                    <span class="n">horizontal_lines_img</span><span class="p">,</span>
+                    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">y1</span><span class="p">),</span>
+                    <span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">y2</span><span class="p">),</span>
+                    <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span>
+                    <span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">horizontal_lines_img</span>
+
+
+<span class="c1"># Find vertical lines</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_vertical_lines</span><span class="p">(</span><span class="n">img_gray</span><span class="p">):</span>
+    <span class="n">img_bin_v</span> <span class="o">=</span> <span class="n">make_binary_image</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">threshold_v</span><span class="p">)</span>
+    <span class="c1"># Discard all lines in the top third of the image</span>
+    <span class="n">img_bin_v</span><span class="p">[:</span> <span class="n">img_bin_v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">3</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># And in the bottom 10th</span>
+    <span class="n">img_bin_v</span><span class="p">[</span><span class="n">img_bin_v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">img_bin_v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">10</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;threshold_v.jpg&quot;</span><span class="p">,</span> <span class="n">img_bin_v</span><span class="p">)</span>
+    <span class="c1"># Blur verticaly to make dotted lines continuous</span>
+    <span class="n">img_vblur</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">img_bin_v</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">21</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;vblur.jpg&quot;</span><span class="p">,</span> <span class="n">img_vblur</span><span class="p">)</span>
+    <span class="n">kernel_length_v</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img_bin_v</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">//</span> <span class="mi">120</span>
+    <span class="n">vertical_kernel</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">getStructuringElement</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">MORPH_RECT</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">kernel_length_v</span><span class="p">))</span>
+    <span class="n">im_temp_v</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">img_bin_v</span><span class="p">,</span> <span class="n">vertical_kernel</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">vertical_lines_img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">dilate</span><span class="p">(</span><span class="n">im_temp_v</span><span class="p">,</span> <span class="n">vertical_kernel</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;v2.jpg&quot;</span><span class="p">,</span> <span class="n">vertical_lines_img</span><span class="p">)</span>
+    <span class="c1"># Find lines in the edges using Hough Line Transform</span>
+    <span class="n">vlines</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">HoughLinesP</span><span class="p">(</span>
+        <span class="n">vertical_lines_img</span><span class="p">,</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">180</span><span class="p">,</span>
+        <span class="n">threshold</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+        <span class="n">minLineLength</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">maxLineGap</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># Create an image with only vertical lines drawn</span>
+    <span class="n">vertical_lines_img</span> <span class="o">=</span> <span class="n">make_binary_image</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># blank</span>
+    <span class="k">if</span> <span class="n">vlines</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">vlines</span><span class="p">:</span>
+            <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>  <span class="c1"># Filter out non-vertical lines</span>
+                <span class="n">cv2</span><span class="o">.</span><span class="n">line</span><span class="p">(</span>
+                    <span class="n">vertical_lines_img</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="p">(</span><span class="n">x2</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                    <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span>
+                    <span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
+    <span class="k">return</span> <span class="n">vertical_lines_img</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">table_detection</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+    <span class="n">img_gray</span> <span class="o">=</span> <span class="n">make_greyscale_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;greyed_out.jpg&quot;</span><span class="p">,</span> <span class="n">img_gray</span><span class="p">)</span>
+
+    <span class="n">vertical_lines_img</span> <span class="o">=</span> <span class="n">find_vertical_lines</span><span class="p">(</span><span class="n">img_gray</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;vlines.jpg&quot;</span><span class="p">,</span> <span class="n">vertical_lines_img</span><span class="p">)</span>
+
+    <span class="n">horizontal_lines_img</span> <span class="o">=</span> <span class="n">find_horizontal_lines</span><span class="p">(</span><span class="n">img_gray</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;hlines.jpg&quot;</span><span class="p">,</span> <span class="n">horizontal_lines_img</span><span class="p">)</span>
+
+    <span class="c1"># Both sets of lines</span>
+    <span class="n">lines_img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">bitwise_or</span><span class="p">(</span><span class="n">horizontal_lines_img</span><span class="p">,</span> <span class="n">vertical_lines_img</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;lines.jpg&quot;</span><span class="p">,</span> <span class="n">lines_img</span><span class="p">)</span>
+
+    <span class="c1"># find contours in the lines image</span>
+    <span class="n">contours</span><span class="p">,</span> <span class="n">hierarchy</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">findContours</span><span class="p">(</span>
+        <span class="n">lines_img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">RETR_LIST</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">CHAIN_APPROX_SIMPLE</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Find the contours that are likely to be the table</span>
+    <span class="n">filtered_contours</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">contours</span><span class="p">:</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">boundingRect</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">w</span> <span class="o">&lt;</span> <span class="mi">130</span> <span class="ow">or</span> <span class="n">w</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">h</span> <span class="o">&lt;</span> <span class="mi">70</span> <span class="ow">or</span> <span class="n">h</span> <span class="o">&gt;</span> <span class="mi">150</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">2000</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">filtered_contours</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span>
+
+    <span class="c1"># Draw the contours on the original image</span>
+    <span class="n">img_contours</span> <span class="o">=</span> <span class="n">make_binary_image</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">threshold_h</span><span class="p">)</span>
+    <span class="n">img_contours</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img_contours</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">drawContours</span><span class="p">(</span><span class="n">img_contours</span><span class="p">,</span> <span class="n">filtered_contours</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;contours_image.jpg&quot;</span><span class="p">,</span> <span class="n">img_contours</span><span class="p">)</span>
+
+    <span class="c1"># Find the empty cells</span>
+    <span class="n">empty_contours</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">img_empty</span> <span class="o">=</span> <span class="n">make_binary_image</span><span class="p">(</span><span class="n">img_gray</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">threshold_h</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">filtered_contours</span><span class="p">:</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">boundingRect</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span>
+        <span class="n">mn</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">img_empty</span><span class="p">[</span><span class="n">y</span> <span class="o">+</span> <span class="mi">10</span> <span class="p">:</span> <span class="n">y</span> <span class="o">+</span> <span class="n">h</span> <span class="o">-</span> <span class="mi">10</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">10</span> <span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">w</span> <span class="o">-</span> <span class="mi">10</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">mn</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="n">empty_contours</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">rectangle</span><span class="p">(</span><span class="n">img_contours</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">w</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="n">h</span><span class="p">),</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">10</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;filled_image.jpg&quot;</span><span class="p">,</span> <span class="n">img_contours</span><span class="p">)</span>
+
+    <span class="c1"># Fill numbers into the empty cells</span>
+    <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">empty_contours</span><span class="p">:</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">boundingRect</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">putText</span><span class="p">(</span>
+            <span class="n">img</span><span class="p">,</span>
+            <span class="s2">&quot;99.9&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">w</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">20</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="n">h</span> <span class="o">-</span> <span class="mi">20</span><span class="p">),</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">FONT_HERSHEY_SIMPLEX</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">,</span>
+            <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;missing_infilled.jpg&quot;</span><span class="p">,</span> <span class="n">img</span><span class="p">)</span>
+
+
+<span class="n">img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span>
+    <span class="s2">&quot;../images/jpgs_300dpi/Devon_1941-1950_RainNos_1651-1689-</span><span class="si">%d</span><span class="s2">.jpg&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">img</span>
+<span class="p">)</span>
+<span class="c1"># Copy of the original - for plotting</span>
+<span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="s2">&quot;./original.jpg&quot;</span><span class="p">,</span> <span class="n">img</span><span class="p">)</span>
+<span class="n">table_detection</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/AI_DR.webp" alt="Logo of AI data rescue: Daily precipitation"/>
+            </a></p>
+<h3><a href="../index.html">Table Of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gemini_tests/basic_api/index.html">Basic API function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gemini_tests/single_measurement/index.html">Extracting a single data point</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gemini_tests/structured_output/index.html">Specifying an output structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gemini_tests/page_locations/index.html">Finding data locations on the page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gemini_tests/whole_page/index.html">Extracting all data from a page</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gemini_tests/10-year-monthlies/index.html">10-year monthlies</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pre-processing</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../credits.html">Authors and acknowledgements</a></li>
+</ul>
+<h3><a href="https://github.com/philip-brohan/AI_daily_precip">Get the code</a></h3>
+
+<ul>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip"
+           rel="nofollow">Github repository</a></li>
+<li><a href="https://github.com/philip-brohan/AI_daily_precip/archive/master.zip"
+           rel="nofollow">Zip file</a></li>
+</ul>
+
+<h3>Found a bug, or have a suggestion?</h3>
+
+Please <a href="https://github.com/philip-brohan/AI_daily_precip/issues/new">raise an issue</a><br>or <a href="mailto://philip.brohan@metoffice.gov.uk">contact Philip</a>.
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../how_to.html" title="How to reproduce and extend this work"
+             >next</a></li>
+        <li class="right" >
+          <a href="../gemini_tests/10-year-monthlies/plot_digitised.html" title="Diagnostic plot for 10-year monthlies test"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AI DR</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pre-processing</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    </div>
+  </body>
+</html>
