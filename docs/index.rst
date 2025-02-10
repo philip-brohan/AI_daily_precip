@@ -47,6 +47,17 @@ Gemini is extremely capable for this use case, and impressively easy to use. It'
 
 In this simpler case it works pretty-much perfectly.
 
+There are various ways we could improve the process, particularly to cope better with missing data:
+
+.. toctree::
+   :maxdepth: 1
+
+   Pre-processing <pre-processing/index>
+
+
+Small print 
+-----------
+
 .. toctree::
    :maxdepth: 1
 
