@@ -16,12 +16,26 @@ dependencies:
 # Gemini API
   - google-generativeai=0.8
   - grpcio # Don't use this, but it's required by google-generativeai
+# GPU support - need these for tensorflow to pick up GPU versions
+  - cuda
+  - cudnn
+# Huggingface transformers library
+  - transformers=4.48
+
+# Tensorflow backend for transformers
+  - pip
+  - pip:
+      - torch
+      - torchvision
+
+
+variables:
 
 # Tell python to look for modules in the root directory of the project
 # (A hack, needs to be edited for every installation, but makes code
 #  management much easier.)
 # Replace with the path to your project directory root.
-
-variables:
   PYTHONPATH: /home/users/philip.brohan/Projects/AI_daily_precip
 
+# Tell huggingface where to store model weights
+  HF_HOME: /data/users/philip.brohan/huggingface
