@@ -4,7 +4,7 @@
 #  This script finds the empty cells and adds a mark to them.
 
 import os
-import PIL.Image
+import glob
 import numpy as np
 import cv2
 
@@ -12,6 +12,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--img", help="Image number", type=int, required=False, default=3)
+parser.add_argument("--gallery", help="Use RJM's gallery images", action="store_true")
 parser.add_argument("--debug", help="Output intermediate images", action="store_true")
 parser.add_argument(
     "--threshold_h",
@@ -29,6 +30,12 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+
+opdir = "."
+if args.gallery:
+    opdir = "%s/gemini/gallery/pre-processing/%04d" % (os.getenv("SCRATCH"), args.img)
+    if not os.path.exists(opdir):
+        os.makedirs(opdir)
 
 
 # Make greyscale image from the original
@@ -51,17 +58,17 @@ def find_horizontal_lines(img_gray):
     # And in the bottom 20th
     img_bin_h[img_bin_h.shape[0] - img_bin_h.shape[0] // 20 :, :] = 0
     if args.debug:
-        cv2.imwrite("threshold_h.jpg", img_bin_h)
+        cv2.imwrite("%s/threshold_h.jpg" % opdir, img_bin_h)
     # Blur horizontally to make dotted lines continuous
     img_hblur = cv2.GaussianBlur(img_bin_h, (19, 3), 0)
     if args.debug:
-        cv2.imwrite("hblur.jpg", img_hblur)
+        cv2.imwrite("%s/hblur.jpg" % opdir, img_hblur)
     kernel_length_h = (np.array(img_bin_h).shape[0]) // 100
     horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_length_h, 1))
     im_temp_h = cv2.erode(img_hblur, horizontal_kernel, iterations=3)
     horizontal_lines_img = cv2.dilate(im_temp_h, horizontal_kernel, iterations=3)
     if args.debug:
-        cv2.imwrite("h2.jpg", horizontal_lines_img)
+        cv2.imwrite("%s/h2.jpg" % opdir, horizontal_lines_img)
     # Find lines in the edges using Hough Line Transform
     hlines = cv2.HoughLinesP(
         horizontal_lines_img,
@@ -96,17 +103,17 @@ def find_vertical_lines(img_gray):
     # And in the bottom 10th
     img_bin_v[img_bin_v.shape[0] - img_bin_v.shape[0] // 10 :, :] = 0
     if args.debug:
-        cv2.imwrite("threshold_v.jpg", img_bin_v)
+        cv2.imwrite("%s/threshold_v.jpg" % opdir, img_bin_v)
     # Blur verticaly to make dotted lines continuous
     img_vblur = cv2.GaussianBlur(img_bin_v, (3, 21), 0)
     if args.debug:
-        cv2.imwrite("vblur.jpg", img_vblur)
+        cv2.imwrite("%s/vblur.jpg" % opdir, img_vblur)
     kernel_length_v = (np.array(img_bin_v).shape[1]) // 120
     vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kernel_length_v))
     im_temp_v = cv2.erode(img_bin_v, vertical_kernel, iterations=3)
     vertical_lines_img = cv2.dilate(im_temp_v, vertical_kernel, iterations=3)
     if args.debug:
-        cv2.imwrite("v2.jpg", vertical_lines_img)
+        cv2.imwrite("%s/v2.jpg" % opdir, vertical_lines_img)
     # Find lines in the edges using Hough Line Transform
     vlines = cv2.HoughLinesP(
         vertical_lines_img,
@@ -135,20 +142,20 @@ def find_vertical_lines(img_gray):
 def table_detection(img):
     img_gray = make_greyscale_image(img)
     if args.debug:
-        cv2.imwrite("greyed_out.jpg", img_gray)
+        cv2.imwrite("%s/greyed_out.jpg" % opdir, img_gray)
 
     vertical_lines_img = find_vertical_lines(img_gray)
     if args.debug:
-        cv2.imwrite("vlines.jpg", vertical_lines_img)
+        cv2.imwrite("%s/vlines.jpg" % opdir, vertical_lines_img)
 
     horizontal_lines_img = find_horizontal_lines(img_gray)
     if args.debug:
-        cv2.imwrite("hlines.jpg", horizontal_lines_img)
+        cv2.imwrite("%s/hlines.jpg" % opdir, horizontal_lines_img)
 
     # Both sets of lines
     lines_img = cv2.bitwise_or(horizontal_lines_img, vertical_lines_img)
     if args.debug:
-        cv2.imwrite("lines.jpg", lines_img)
+        cv2.imwrite("%s/lines.jpg" % opdir, lines_img)
 
     # find contours in the lines image
     contours, hierarchy = cv2.findContours(
@@ -172,7 +179,7 @@ def table_detection(img):
     img_contours = cv2.cvtColor(img_contours, cv2.COLOR_GRAY2BGR)
     cv2.drawContours(img_contours, filtered_contours, -1, (0, 255, 0), 2)
     if args.debug:
-        cv2.imwrite("contours_image.jpg", img_contours)
+        cv2.imwrite("%s/contours_image.jpg" % opdir, img_contours)
 
     # Find the empty cells
     empty_contours = []
@@ -184,7 +191,7 @@ def table_detection(img):
             empty_contours.append(contour)
             cv2.rectangle(img_contours, (x, y), (x + w, y + h), (255, 0, 0), 10)
     if args.debug:
-        cv2.imwrite("filled_image.jpg", img_contours)
+        cv2.imwrite("%s/filled_image.jpg" % opdir, img_contours)
 
     # Fill numbers into the empty cells
     for contour in empty_contours:
@@ -198,12 +205,16 @@ def table_detection(img):
             (0, 0, 0),
             2,
         )
-    cv2.imwrite("missing_infilled.jpg", img)
+    cv2.imwrite("%s/missing_infilled.jpg" % opdir, img)
 
 
-img = cv2.imread(
-    "../images/jpgs_300dpi/Devon_1941-1950_RainNos_1651-1689-%d.jpg" % args.img
-)
+if args.gallery:
+    image_files = sorted(glob.glob(os.path.join("../images/RJM_gallery", "*.jpg")))
+    img = cv2.imread(image_files[args.img - 1])
+else:
+    img = cv2.imread(
+        "../images/jpgs_300dpi/Devon_1941-1950_RainNos_1651-1689-%d.jpg" % args.img
+    )
 # Copy of the original - for plotting
-cv2.imwrite("./original.jpg", img)
+cv2.imwrite("%s/original.jpg" % opdir, img)
 table_detection(img)
