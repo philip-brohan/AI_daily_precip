@@ -6,6 +6,7 @@ dependencies:
   - python=3.13
   - black  # Code formatter
   - sphinx  # Documentation
+  - scipy=1.15
 # convert pdf to jpgs
   - imagemagick=7.1
 # graphics
