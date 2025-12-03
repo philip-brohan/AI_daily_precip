@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Make a montage of infilling results for all the images in tha gallery
+# Make a montage of infilling results for all the images in the gallery
 
-montage /data/scratch/philip.brohan/gemini/gallery/blob_array/*/xy_spectrum_plots.png -tile 5x3 -geometry +10+10 montage.jpg
+montage /data/scratch/philip.brohan/gemini/gallery/blob_array/*/marked.jpg -tile 5x3 -geometry +10+10 montage.jpg
 

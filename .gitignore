@@ -180,3 +180,6 @@ cython_debug/
 # Output files
 *.txt
 *.json
+
+# VSCode spec
+.vscode/

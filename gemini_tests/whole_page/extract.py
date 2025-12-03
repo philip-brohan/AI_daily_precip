@@ -55,7 +55,14 @@ img = PIL.Image.open(
 )
 
 # Pick an AI to use - this one is the latest as of 2025-01-29
-model = genai.GenerativeModel("gemini-2.0-flash-exp")
+# List available models
+# models = genai.list_models()
+# for model in models:
+#     print(model.name)
+
+model = genai.GenerativeModel("gemini-3-pro-preview")
+# model = genai.GenerativeModel("gemini-flash-latest")
+# model = genai.GenerativeModel("gemini-2.5-pro")
 
 # Get metadata from the image
 result = model.generate_content(
@@ -80,7 +87,7 @@ result = model.generate_content(
     [
         img,
         "\n\n",
-        "List the daily observations  for months January to June. "
+        "List the daily observations  for months January to December. "
         + "Be careful of missing data. Several days have missing data and "
         + "These days will have an entry that is blank or has a dash '-'. "
         + "Return the character '-' for missing data.",
@@ -94,23 +101,23 @@ with open("daily1.json", "w") as file:
 with open("daily1.txt", "w") as file:
     file.write(str(result))
 
-result = model.generate_content(
-    [
-        img,
-        "\n\n",
-        "List the daily observations for months July to December. "
-        + "Be careful of missing data. Several days have missing data and "
-        + "These days will have an entry that is blank or has a dash '-'. "
-        + "Return the character '-' for missing data.",
-    ],
-    generation_config=genai.GenerationConfig(
-        response_mime_type="application/json", response_schema=Annual
-    ),
-)
-with open("daily2.json", "w") as file:
-    file.write(result.text)
-with open("daily2.txt", "w") as file:
-    file.write(str(result))
+# result = model.generate_content(
+#     [
+#         img,
+#         "\n\n",
+#         "List the daily observations for months July to December. "
+#         + "Be careful of missing data. Several days have missing data and "
+#         + "These days will have an entry that is blank or has a dash '-'. "
+#         + "Return the character '-' for missing data.",
+#     ],
+#     generation_config=genai.GenerationConfig(
+#         response_mime_type="application/json", response_schema=Annual
+#     ),
+# )
+# with open("daily2.json", "w") as file:
+#     file.write(result.text)
+# with open("daily2.txt", "w") as file:
+#     file.write(str(result))
 
 # Get the Monthly totals
 result = model.generate_content(

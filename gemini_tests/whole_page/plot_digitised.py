@@ -25,7 +25,7 @@ img = PIL.Image.open(
 # load the digitised data
 metadata = json.load(open("metadata.json"))
 dd1 = json.load(open("daily1.json"))
-dd2 = json.load(open("daily2.json"))
+# dd2 = json.load(open("daily2.json"))
 totals = json.load(open("totals.json"))
 
 # Create the figure
@@ -156,10 +156,10 @@ monthNumbers = {
     "Dec": 12,
     "December": 12,
 }
-for month in dd1["Month"] + dd2["Month"]:
+for month in dd1["Month"]:  # + dd2["Month"]:
     for day in month["rainfall"]:
         ax_digitised.text(
-            monthNumbers[month["Month"]],
+            monthNumbers[month["Month"][:3]],
             day["Day"],
             day["rainfall"],
             ha="center",

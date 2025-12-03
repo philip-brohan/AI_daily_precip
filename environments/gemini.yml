@@ -15,7 +15,7 @@ dependencies:
 # old-style computer vision
   - opencv=4.10
 # Gemini API
-  - google-generativeai=0.8
+  - google-generativeai=0.8.5
   - grpcio # Don't use this, but it's required by google-generativeai
 # GPU support - need these for tensorflow to pick up GPU versions
   - cuda
