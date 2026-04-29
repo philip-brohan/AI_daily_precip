@@ -1,11 +1,26 @@
 #!/usr/bin/env python3
 
 # Get all required data from the page
+# Supports --scale argument to test effect of image resolution on results
 
 import os
+import argparse
 import PIL.Image
 import google.generativeai as genai
 import typing_extensions as typing
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--scale",
+    help="Scale factor for image resolution (1.0 = full 300dpi, 0.5 = half, etc.)",
+    type=float,
+    required=False,
+    default=1.0,
+)
+args = parser.parse_args()
+
+outdir = "res_%.2f" % args.scale
+os.makedirs(outdir, exist_ok=True)
 
 # You will need an API key get it from https://ai.google.dev/gemini-api/docs/api-key
 
@@ -49,10 +64,14 @@ class Totals(typing.TypedDict):
     Totals: list[str]
 
 
-# Load the sample image
+# Load the sample image and resize to requested scale
 img = PIL.Image.open(
     "../../images/jpgs_300dpi/Devon_1941-1950_RainNos_1651-1689-293.jpg"
 )
+if args.scale != 1.0:
+    new_size = (int(img.width * args.scale), int(img.height * args.scale))
+    img = img.resize(new_size, PIL.Image.LANCZOS)
+print("Image size: %dx%d (scale=%.2f)" % (img.width, img.height, args.scale))
 
 # Pick an AI to use - this one is the latest as of 2025-01-29
 # List available models
@@ -60,8 +79,8 @@ img = PIL.Image.open(
 # for model in models:
 #     print(model.name)
 
-model = genai.GenerativeModel("gemini-3-pro-preview")
-# model = genai.GenerativeModel("gemini-flash-latest")
+# model = genai.GenerativeModel("gemini-3-pro-preview")
+model = genai.GenerativeModel("gemini-flash-latest")
 # model = genai.GenerativeModel("gemini-2.5-pro")
 
 # Get metadata from the image
@@ -76,9 +95,9 @@ result = model.generate_content(
     ),
 )
 # Structured data as JSON
-with open("metadata.json", "w") as file:
+with open("%s/metadata.json" % outdir, "w") as file:
     file.write(result.text)
-with open("metadata.txt", "w") as file:
+with open("%s/metadata.txt" % outdir, "w") as file:
     file.write(str(result))
 
 # Get the daily observations from the image
@@ -96,9 +115,9 @@ result = model.generate_content(
         response_mime_type="application/json", response_schema=Annual
     ),
 )
-with open("daily1.json", "w") as file:
+with open("%s/daily1.json" % outdir, "w") as file:
     file.write(result.text)
-with open("daily1.txt", "w") as file:
+with open("%s/daily1.txt" % outdir, "w") as file:
     file.write(str(result))
 
 # result = model.generate_content(
@@ -126,7 +145,7 @@ result = model.generate_content(
         response_mime_type="application/json", response_schema=Totals
     ),
 )
-with open("totals.json", "w") as file:
+with open("%s/totals.json" % outdir, "w") as file:
     file.write(result.text)
-with open("totals.txt", "w") as file:
+with open("%s/totals.txt" % outdir, "w") as file:
     file.write(str(result))
