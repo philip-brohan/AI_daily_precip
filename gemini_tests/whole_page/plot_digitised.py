@@ -65,7 +65,7 @@ fig = Figure(
 )
 canvas = FigureCanvas(fig)
 
-# Total width split: image takes ~30%, rest shared among scale columns
+# Total width is split: image takes ~30%, rest shared among scale columns
 img_width = 0.30
 col_width = (0.97 - img_width - 0.01) / max(n_avail, 1)
 
